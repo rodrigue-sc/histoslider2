@@ -11,35 +11,6 @@ const handleStyle = {
   OUserSelect: "none"
 };
 
-const getOffsetXFromDOMElement = event => {
-  if (!event || !event.nativeEvent) return null;
-
-  if (event.nativeEvent.offsetX) { // case on click
-    return event.nativeEvent.offsetX;
-  } else { // case on touch
-    const rect = event.nativeEvent.target.getBoundingClientRect();
-    return event.nativeEvent.targetTouches[0].pageX - rect.left;
-  }
-};
-
-function getOffsetPosition(evt){
-  var parent = evt.target.parentNode;
-  var position = {
-    x: (evt.targetTouches) ? evt.targetTouches[0].pageX : evt.clientX,
-    y: (evt.targetTouches) ? evt.targetTouches[0].pageY : evt.clientY
-  };
-
-  while(parent.offsetParent){
-    position.x -= parent.offsetLeft - parent.scrollLeft;
-    position.y -= parent.offsetTop - parent.scrollTop;
-
-    parent = parent.offsetParent;
-  }
-
-  return position.x;
-}
-
-// Map keycodes to positive or negative values
 export const mapToKeyCode = code => {
   const codes = {
     37: -1,
