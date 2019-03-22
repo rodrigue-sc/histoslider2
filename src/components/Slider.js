@@ -22,6 +22,7 @@ export const mapToKeyCode = code => {
 };
 
 export const sliderPropTypes = {
+  cursorRadius: number,
   data: arrayOf(
     shape({
       x0: number,
@@ -52,6 +53,7 @@ export default class Slider extends Component {
   };
 
   static defaultProps = {
+    cursorRadius: 9,
     sliderStyle: {
       display: "block",
       paddingBottom: "8px",
@@ -100,7 +102,10 @@ export default class Slider extends Component {
   };
 
   dragEnd = event => {
-    const {dragChange} = this.props;
+    const {dragChange, onChange, selection, data} = this.props;
+    const {dragIndex} = this.state;
+
+    console.log('data', data);
 
     event.stopPropagation();
     this.setState(
@@ -109,6 +114,20 @@ export default class Slider extends Component {
         dragIndex: null
       },
       () => {
+        const currentSelection = selection[dragIndex];
+        const currentInterval = data.find(({x, x0}) => currentSelection >= x0 && currentSelection < x);
+
+        if (currentInterval) {
+          const roundedSelection = currentSelection - currentInterval.x0 < currentInterval.x - currentSelection ?
+            currentInterval.x0 : currentInterval.x;
+          const newSelection = selection.slice();
+
+          console.log('currentInterval', currentInterval, roundedSelection, selection);
+
+          newSelection[dragIndex] = roundedSelection;
+          onChange(newSelection);
+        }
+
         dragChange(false);
       }
     );
@@ -177,7 +196,7 @@ export default class Slider extends Component {
   };
 
   renderCursor = (cursorValue, index) => {
-    const {handleLabelFormat, scale} = this.props;
+    const {cursorRadius, handleLabelFormat, scale} = this.props;
     const formatter = d3Format(handleLabelFormat);
 
     return (
@@ -189,7 +208,7 @@ export default class Slider extends Component {
       >
         <circle
           style={handleStyle}
-          r={10}
+          r={cursorRadius + 1}
           cx={0}
           cy={12.5}
           fill="#ddd"
@@ -201,7 +220,7 @@ export default class Slider extends Component {
           onTouchMove={this.touchMove}
           onTouchStart={this.dragStart(index)}
           ref={node => this.cursorRefs[index] = node}
-          r={9}
+          r={cursorRadius}
           cx={0}
           cy={12}
           fill="white"
