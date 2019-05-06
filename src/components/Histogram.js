@@ -1,6 +1,6 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
-import { Motion, spring } from "react-motion";
+import React, { Component } from 'react';
+import PropTypes from 'prop-types';
+import { Motion, spring } from 'react-motion';
 
 export default class Histogram extends Component {
   static propTypes = {
@@ -8,8 +8,10 @@ export default class Histogram extends Component {
       PropTypes.shape({
         x0: PropTypes.number,
         x: PropTypes.number,
-        y: PropTypes.number
-      })
+        y: PropTypes.number,
+        label: PropTypes.string,
+        id: PropTypes.string,
+      }),
     ).isRequired,
     selection: PropTypes.arrayOf(PropTypes.number).isRequired,
     barBorderRadius: PropTypes.number,
@@ -19,49 +21,82 @@ export default class Histogram extends Component {
     height: PropTypes.number,
     showOnDrag: PropTypes.bool,
     reset: PropTypes.func,
-    onChange: PropTypes.func
+    onChange: PropTypes.func,
+    hasScale: PropTypes.bool,
   };
 
   static defaultProps = {
-    histogramPadding: 1
+    histogramPadding: 1,
   };
 
   selectBucket = bucket => () => {
-    const {onChange} = this.props;
+    const { onChange } = this.props;
 
     onChange([bucket.x0, bucket.x]);
   };
 
   renderSingleBar = (bucket, index) => {
-    const {barBorderRadius, barPadding, barStyle, height, max, reset, scale, selectedColor, selection, unselectedColor} = this.props;
+    const {
+      barBorderRadius,
+      barPadding,
+      barStyle,
+      data,
+      hasScale,
+      height,
+      max,
+      reset,
+      scale,
+      selectedColor,
+      selection,
+      unselectedColor,
+      width,
+    } = this.props;
+
+    const nbBuckets = Object.keys(data).length;
+    const calculatedWidth = hasScale
+      ? scale(bucket.x) - scale(bucket.x0) - barPadding
+      : width / nbBuckets - barPadding;
+
+    const calculatedX0 = hasScale ? scale(bucket.x0) : index * calculatedWidth;
+
     const selectionSorted = Array.from(selection).sort((a, b) => +a - +b);
     let opacity = 0;
 
     if (selectionSorted[0] > bucket.x || selectionSorted[1] < bucket.x0) {
       opacity = 0;
-    } else if (selectionSorted[0] <= bucket.x0 && selectionSorted[1] >= bucket.x) {
+    } else if (
+      selectionSorted[0] <= bucket.x0 &&
+      selectionSorted[1] >= bucket.x
+    ) {
       // Entire block is covered
       opacity = 1;
-    } else if (selectionSorted[0] > bucket.x0 && selectionSorted[1] > bucket.x) {
+    } else if (
+      selectionSorted[0] > bucket.x0 &&
+      selectionSorted[1] > bucket.x
+    ) {
       opacity = 1 - (selectionSorted[0] - bucket.x0) / (bucket.x - bucket.x0);
       // Some of left block is covered
-    } else if (selectionSorted[1] < bucket.x && selectionSorted[0] < bucket.x0) {
+    } else if (
+      selectionSorted[1] < bucket.x &&
+      selectionSorted[0] < bucket.x0
+    ) {
       // Some of right block is covered
       opacity = (selectionSorted[1] - bucket.x0) / (bucket.x - bucket.x0);
     } else {
       // Parital match
-      opacity = (selectionSorted[1] - selectionSorted[0]) / (bucket.x - bucket.x0);
+      opacity =
+        (selectionSorted[1] - selectionSorted[0]) / (bucket.x - bucket.x0);
     }
 
     return (
       <g
         key={index}
-        transform={`translate(${scale(bucket.x0) + barPadding / 2} 0)`}
+        transform={`translate(${calculatedX0 + barPadding / 2} 0)`}
       >
         <rect
           fill={unselectedColor}
-          width={scale(bucket.x) - scale(bucket.x0) - barPadding}
-          height={bucket.y / max * height}
+          width={calculatedWidth}
+          height={(bucket.y / max) * height}
           rx={barBorderRadius}
           ry={barBorderRadius}
           x={0}
@@ -70,12 +105,9 @@ export default class Histogram extends Component {
           fill={selectedColor}
           onClick={this.selectBucket(bucket)}
           onDoubleClick={reset.bind(this)}
-          style={Object.assign(
-            { opacity, cursor: "pointer" },
-            barStyle
-          )}
-          width={scale(bucket.x) - scale(bucket.x0) - barPadding}
-          height={bucket.y / max * height}
+          style={Object.assign({ opacity, cursor: 'pointer' }, barStyle)}
+          width={calculatedWidth}
+          height={(bucket.y / max) * height}
           rx={barBorderRadius}
           ry={barBorderRadius}
           x={0}
@@ -92,7 +124,7 @@ export default class Histogram extends Component {
       showOnDrag,
       padding,
       width,
-      dragging
+      dragging,
     } = this.props;
     const showHistogramPredicate = showOnDrag ? !!dragging : true;
     const h = showHistogramPredicate ? height : 0;
@@ -105,18 +137,19 @@ export default class Histogram extends Component {
             <div
               style={Object.assign({}, s, {
                 zIndex: 0,
-                overflow: "hidden",
-                position: showOnDrag && "absolute",
-                bottom: showOnDrag && `calc(100% - ${padding}px)`
+                overflow: 'hidden',
+                position: showOnDrag && 'absolute',
+                bottom: showOnDrag && `calc(100% - ${padding}px)`,
+                'margin-bottom': '15px',
               })}
             >
               <svg
                 style={Object.assign(
                   {
-                    display: "block",
-                    backgroundColor: "white"
+                    display: 'block',
+                    backgroundColor: 'white',
                   },
-                  histogramStyle
+                  histogramStyle,
                 )}
                 width={width}
                 height={height}

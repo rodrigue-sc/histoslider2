@@ -1,14 +1,14 @@
-import React, { Component } from "react";
-import {number, shape, arrayOf, func, string, object} from "prop-types";
-import { format as d3Format } from "d3-format";
+import React, { Component } from 'react';
+import { bool, number, shape, arrayOf, func, string, object } from 'prop-types';
+import { format as d3Format } from 'd3-format';
 
 const handleStyle = {
-  cursor: "move",
-  userSekect: "none",
-  MozUserSelect: "none",
-  KhtmlUserSelect: "none",
-  WebkitUserSelect: "none",
-  OUserSelect: "none"
+  cursor: 'move',
+  userSekect: 'none',
+  MozUserSelect: 'none',
+  KhtmlUserSelect: 'none',
+  WebkitUserSelect: 'none',
+  OUserSelect: 'none',
 };
 
 export const mapToKeyCode = code => {
@@ -16,7 +16,7 @@ export const mapToKeyCode = code => {
     37: -1,
     38: 1,
     39: 1,
-    40: -1
+    40: -1,
   };
   return codes[code] || null;
 };
@@ -27,13 +27,15 @@ export const sliderPropTypes = {
     shape({
       x0: number,
       x: number,
-      y: number
-    })
+      y: number,
+      label: string,
+      id: string,
+    }),
   ).isRequired,
   handleLabelFormat: string,
   height: number,
   sliderStyle: object,
-  width: number
+  width: number,
 };
 
 export default class Slider extends Component {
@@ -41,6 +43,7 @@ export default class Slider extends Component {
     ...sliderPropTypes,
     bucketSize: number,
     dragChange: func,
+    hasScale: bool,
     histogramPadding: number,
     innerWidth: number,
     keyboardStep: number,
@@ -50,17 +53,19 @@ export default class Slider extends Component {
     scale: func,
     selectionColor: string,
     selection: arrayOf(number).isRequired,
+    sliderTrackHeight: number,
   };
 
   static defaultProps = {
-    cursorRadius: 9,
+    cursorRadius: 15,
     sliderStyle: {
-      display: "block",
-      paddingBottom: "8px",
+      display: 'block',
+      paddingBottom: '8px',
       zIndex: 6,
-      overflow: "visible"
+      overflow: 'visible',
     },
-    keyboardStep: 1
+    keyboardStep: 1,
+    sliderTrackHeight: 8,
   };
 
   constructor(props) {
@@ -74,36 +79,36 @@ export default class Slider extends Component {
   }
 
   componentDidMount() {
-    window.addEventListener("mouseup", this.dragEnd, false);
-    window.addEventListener("touchend", this.dragEnd, false);
+    window.addEventListener('mouseup', this.dragEnd, false);
+    window.addEventListener('touchend', this.dragEnd, false);
   }
 
   componentWillUnmount() {
-    window.removeEventListener("mouseup", this.dragEnd, false);
-    window.removeEventListener("touchend", this.dragEnd, false);
+    window.removeEventListener('mouseup', this.dragEnd, false);
+    window.removeEventListener('touchend', this.dragEnd, false);
   }
 
   dragStart = index => event => {
-    const {dragChange} = this.props;
-    const {dragging} = this.state;
+    const { dragChange } = this.props;
+    const { dragging } = this.state;
 
     event.stopPropagation();
     if (!dragging) {
       this.setState(
         {
           dragging: true,
-          dragIndex: index
+          dragIndex: index,
         },
         () => {
           dragChange(true);
-        }
+        },
       );
     }
   };
 
   dragEnd = event => {
-    const {dragChange, onChange, selection, data} = this.props;
-    const {dragIndex} = this.state;
+    const { dragChange, onChange, selection, data } = this.props;
+    const { dragIndex } = this.state;
 
     console.log('data', data);
 
@@ -111,37 +116,49 @@ export default class Slider extends Component {
     this.setState(
       {
         dragging: false,
-        dragIndex: null
+        dragIndex: null,
       },
       () => {
         const currentSelection = selection[dragIndex];
-        const currentInterval = data.find(({x, x0}) => currentSelection >= x0 && currentSelection < x);
+        const currentInterval = data.find(
+          ({ x, x0 }) => currentSelection >= x0 && currentSelection < x,
+        );
 
         if (currentInterval) {
-          const roundedSelection = currentSelection - currentInterval.x0 < currentInterval.x - currentSelection ?
-            currentInterval.x0 : currentInterval.x;
+          const roundedSelection =
+            currentSelection - currentInterval.x0 <
+            currentInterval.x - currentSelection
+              ? currentInterval.x0
+              : currentInterval.x;
           const newSelection = selection.slice();
 
-          console.log('currentInterval', currentInterval, roundedSelection, selection);
+          console.log(
+            'currentInterval',
+            currentInterval,
+            roundedSelection,
+            selection,
+          );
 
           newSelection[dragIndex] = roundedSelection;
           onChange(newSelection);
         }
 
         dragChange(false);
-      }
+      },
     );
   };
 
   dragFromSVG = event => {
-    const {dragChange, onChange, scale, selection} = this.props;
-    const {dragging} = this.state;
+    const { dragChange, onChange, scale, selection } = this.props;
+    const { dragging } = this.state;
 
     if (!dragging && event.nativeEvent.offsetX) {
       let selected = scale.invert(event.nativeEvent.offsetX);
       let dragIndex;
 
-      if (Math.abs(selected - selection[0]) > Math.abs(selected - selection[1])) {
+      if (
+        Math.abs(selected - selection[0]) > Math.abs(selected - selection[1])
+      ) {
         selection[1] = selected;
         dragIndex = 0;
       } else {
@@ -153,18 +170,18 @@ export default class Slider extends Component {
       this.setState(
         {
           dragging: true,
-          dragIndex
+          dragIndex,
         },
         () => {
           dragChange(true);
-        }
+        },
       );
     }
   };
 
   mouseMove = event => {
-    const {onChange, scale, selection} = this.props;
-    const {dragging, dragIndex} = this.state;
+    const { onChange, scale, selection } = this.props;
+    const { dragging, dragIndex } = this.state;
 
     if (dragging) {
       selection[dragIndex] = scale.invert(event.nativeEvent.offsetX);
@@ -172,9 +189,9 @@ export default class Slider extends Component {
     }
   };
 
-  touchMove = ({touches}) => {
-    const {onChange, scale, selection} = this.props;
-    const {dragging, dragIndex} = this.state;
+  touchMove = ({ touches }) => {
+    const { onChange, scale, selection } = this.props;
+    const { dragging, dragIndex } = this.state;
 
     if (dragging) {
       const left = this.node.getBoundingClientRect().left;
@@ -191,12 +208,19 @@ export default class Slider extends Component {
 
     const direction = mapToKeyCode(event.keyCode);
     let selections = [...selection];
-    selections[index] = Math.round(selections[index] + direction * keyboardStep);
+    selections[index] = Math.round(
+      selections[index] + direction * keyboardStep,
+    );
     onChange(selections);
   };
 
   renderCursor = (cursorValue, index) => {
-    const {cursorRadius, handleLabelFormat, scale} = this.props;
+    const {
+      cursorRadius,
+      handleLabelFormat,
+      scale,
+      selectedColor,
+    } = this.props;
     const formatter = d3Format(handleLabelFormat);
 
     return (
@@ -208,35 +232,24 @@ export default class Slider extends Component {
       >
         <circle
           style={handleStyle}
-          r={cursorRadius + 1}
+          r={cursorRadius}
           cx={0}
           cy={12.5}
-          fill="#ddd"
+          fill="white"
+          stroke={selectedColor}
           strokeWidth="1"
         />
-        <circle
+        <image
           style={handleStyle}
           onMouseDown={this.dragStart(index)}
           onTouchMove={this.touchMove}
           onTouchStart={this.dragStart(index)}
-          ref={node => this.cursorRefs[index] = node}
-          r={cursorRadius}
-          cx={0}
-          cy={12}
-          fill="white"
-          stroke="#ccc"
-          strokeWidth="1"
+          ref={node => (this.cursorRefs[index] = node)}
+          x={-3.5}
+          y={7}
+          //style={{ width: 20, height: 25 }}
+          href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAJCAYAAAD+WDajAAABS2lUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxMzggNzkuMTU5ODI0LCAyMDE2LzA5LzE0LTAxOjA5OjAxICAgICAgICAiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIi8+CiA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo8P3hwYWNrZXQgZW5kPSJyIj8+IEmuOgAAACpJREFUGJVjZMg//ZCBgUGeAQJQ2EwMDAxyDAiAwmZiwAMGpeQjJD4KGwB3gActOpAdqgAAAABJRU5ErkJggg=="
         />
-        <text
-          style={handleStyle}
-          textAnchor="middle"
-          x={0}
-          y={36}
-          fill="#666"
-          fontSize={12}
-        >
-          {formatter(cursorValue)}
-        </text>
       </g>
     );
   };
@@ -250,11 +263,28 @@ export default class Slider extends Component {
       reset,
       selectedColor,
       unselectedColor,
-      sliderStyle
+      sliderStyle,
+      data,
+      sliderTrackHeight,
     } = this.props;
 
     const selectionWidth = Math.abs(scale(selection[1]) - scale(selection[0]));
     const selectionSorted = Array.from(selection).sort((a, b) => +a - +b);
+
+    const leftSelection = selection[0];
+    const leftInterval = data.find(
+      ({ x, x0 }) => leftSelection >= x0 && leftSelection < x,
+    );
+
+    const nbBuckets = Object.keys(data).length;
+    const rightSelection = selection[1];
+    const rightInterval = data.find(
+      ({ x, x0 }, index) =>
+        (rightSelection >= x0 && rightSelection < x) || index === nbBuckets - 1,
+    );
+
+    const leftLabel = leftInterval.label;
+    const rightLabel = rightInterval.label;
 
     return (
       <svg
@@ -264,17 +294,37 @@ export default class Slider extends Component {
         onMouseDown={this.dragFromSVG}
         onDoubleClick={e => reset(e)}
         onMouseMove={this.mouseMove}
-        ref={e => this.node = e}
+        ref={e => (this.node = e)}
       >
-        <rect height={4} fill={unselectedColor} x={0} y={10} width={width} />
         <rect
-          height={4}
+          height={sliderTrackHeight}
+          fill={unselectedColor}
+          x={0}
+          y={10}
+          width={width}
+        />
+        <rect
+          height={sliderTrackHeight}
           fill={selectedColor}
           x={scale(selectionSorted[0])}
           y={10}
           width={selectionWidth}
         />
         {selection.map(this.renderCursor)}
+
+        <text textAnchor="middle" x={0} y={60} fontSize={15} fontWeight="bold">
+          {leftLabel}
+        </text>
+
+        <text
+          textAnchor="middle"
+          x={width}
+          y={60}
+          fontSize={15}
+          fontWeight="bold"
+        >
+          {rightLabel}
+        </text>
       </svg>
     );
   }
