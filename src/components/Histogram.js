@@ -92,7 +92,9 @@ export default class Histogram extends Component {
     return (
       <g
         key={index}
-        transform={`translate(${calculatedX0 + barPadding / 2} 0)`}
+        transform={`translate(${calculatedX0 +
+          barPadding / 2 +
+          index * barPadding} 0)`}
       >
         <rect
           fill={unselectedColor}
@@ -119,6 +121,7 @@ export default class Histogram extends Component {
 
   render() {
     const {
+      barPadding,
       height,
       data,
       histogramStyle,
@@ -141,7 +144,7 @@ export default class Histogram extends Component {
                 overflow: 'hidden',
                 position: showOnDrag && 'absolute',
                 bottom: showOnDrag && `calc(100% - ${padding}px)`,
-                marginBottom: '15px',
+                //marginBottom: barPadding,
               })}
             >
               <svg

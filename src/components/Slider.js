@@ -64,6 +64,7 @@ export default class Slider extends Component {
       paddingBottom: '8px',
       zIndex: 6,
       overflow: 'visible',
+      marginTop: '-8px',
     },
     keyboardStep: 1,
     sliderTrackHeight: 8,
@@ -410,6 +411,7 @@ export default class Slider extends Component {
         {selection.map(this.renderCursor)}
 
         <text textAnchor="middle" x={0} y={60} fontSize={15} fontWeight="bold">
+          {'Min: '}
           {leftLabel}
         </text>
 
@@ -420,6 +422,7 @@ export default class Slider extends Component {
           fontSize={15}
           fontWeight="bold"
         >
+          {'Max: '}
           {rightLabel}
         </text>
       </svg>

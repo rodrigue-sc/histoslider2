@@ -126,6 +126,7 @@ export default class Histoslider extends Component {
         style={Object.assign({}, style, {
           width,
           padding,
+          paddingTop: 10,
           boxSizing: 'border-box',
           position: 'relative',
         })}
