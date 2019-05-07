@@ -272,6 +272,10 @@ export default class Slider extends Component {
       ({ index }) => indexPos >= index && indexPos < index + 1,
     );
 
+    if (!bucket) {
+      return data[bucketSize - 1];
+    }
+
     return bucket;
   };
 
@@ -310,14 +314,21 @@ export default class Slider extends Component {
         />
         <image
           style={handleStyle}
-          onMouseDown={this.dragStart(index)}
-          onTouchMove={this.touchMove}
-          onTouchStart={this.dragStart(index)}
-          ref={node => (this.cursorRefs[index] = node)}
           x={-3.5}
           y={7}
           //style={{ width: 20, height: 25 }}
           href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAJCAYAAAD+WDajAAABS2lUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxMzggNzkuMTU5ODI0LCAyMDE2LzA5LzE0LTAxOjA5OjAxICAgICAgICAiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIi8+CiA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo8P3hwYWNrZXQgZW5kPSJyIj8+IEmuOgAAACpJREFUGJVjZMg//ZCBgUGeAQJQ2EwMDAxyDAiAwmZiwAMGpeQjJD4KGwB3gActOpAdqgAAAABJRU5ErkJggg=="
+        />
+        <circle
+          style={handleStyle}
+          onMouseDown={this.dragStart(index)}
+          onTouchMove={this.touchMove}
+          onTouchStart={this.dragStart(index)}
+          ref={node => (this.cursorRefs[index] = node)}
+          r={cursorRadius + 5}
+          cx={0}
+          cy={12.5}
+          fill="transparent"
         />
       </g>
     );
