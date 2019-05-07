@@ -30,6 +30,7 @@ export const sliderPropTypes = {
       y: number,
       label: string,
       id: string,
+      index: number,
     }),
   ).isRequired,
   handleLabelFormat: string,
@@ -110,8 +111,6 @@ export default class Slider extends Component {
     const { dragChange, onChange, selection, data } = this.props;
     const { dragIndex } = this.state;
 
-    console.log('data', data);
-
     event.stopPropagation();
     this.setState(
       {
@@ -149,17 +148,21 @@ export default class Slider extends Component {
   };
 
   dragFromSVG = event => {
-    const { dragChange, onChange, scale, selection } = this.props;
+    const { dragChange, hasScale, onChange, scale, selection } = this.props;
     const { dragging } = this.state;
 
     if (!dragging && event.nativeEvent.offsetX) {
-      let selected = scale.invert(event.nativeEvent.offsetX);
+      const bucket = this.findBucketFromPosition(event.nativeEvent.offsetX);
+
+      let selected = hasScale
+        ? scale.invert(event.nativeEvent.offsetX)
+        : bucket.x0;
       let dragIndex;
 
       if (
         Math.abs(selected - selection[0]) > Math.abs(selected - selection[1])
       ) {
-        selection[1] = selected;
+        selection[1] = hasScale ? selected : bucket.x;
         dragIndex = 0;
       } else {
         selection[0] = selected;
@@ -180,17 +183,23 @@ export default class Slider extends Component {
   };
 
   mouseMove = event => {
-    const { onChange, scale, selection } = this.props;
+    const { onChange, hasScale, scale, selection } = this.props;
     const { dragging, dragIndex } = this.state;
 
     if (dragging) {
-      selection[dragIndex] = scale.invert(event.nativeEvent.offsetX);
+      const bucket = this.findBucketFromPosition(event.nativeEvent.offsetX);
+
+      selection[dragIndex] = hasScale
+        ? scale.invert(event.nativeEvent.offsetX)
+        : dragIndex === 0
+        ? bucket.x0
+        : bucket.x;
       onChange(selection);
     }
   };
 
   touchMove = ({ touches }) => {
-    const { onChange, scale, selection } = this.props;
+    const { onChange, hasScale, scale, selection } = this.props;
     const { dragging, dragIndex } = this.state;
 
     if (dragging) {
@@ -198,7 +207,13 @@ export default class Slider extends Component {
       const offsetX = touches[0].pageX - left;
       const newSelection = selection.slice();
 
-      newSelection[dragIndex] = scale.invert(offsetX);
+      const bucket = this.findBucketFromPosition(offsetX);
+
+      newSelection[dragIndex] = hasScale
+        ? scale.invert(offsetX)
+        : dragIndex === 0
+        ? bucket.x0
+        : bucket.x;
       onChange(newSelection);
     }
   };
@@ -214,20 +229,74 @@ export default class Slider extends Component {
     onChange(selections);
   };
 
+  findBucket = cursorValue => {
+    const { bucketSize, data } = this.props;
+
+    const bucket = data.find(
+      ({ x, x0 }) => cursorValue >= x0 && cursorValue < x,
+    );
+
+    if (!bucket) {
+      const lastBucket = data[bucketSize - 1];
+      if (cursorValue >= lastBucket.x) {
+        //Fake bucket
+        return {
+          x0: lastBucket.x,
+          x: lastBucket.x + 1,
+          y: 1,
+          label: lastBucket.label,
+          index: bucketSize,
+        };
+      }
+      return lastBucket;
+    }
+
+    return bucket;
+  };
+
+  findBucketFromPosition = xPos => {
+    const { bucketSize, data, width } = this.props;
+
+    if (xPos > width) {
+      return data[bucketSize - 1];
+    }
+
+    if (xPos < 0) {
+      return data[0];
+    }
+
+    const intervalWidth = width / bucketSize;
+    const indexPos = xPos / intervalWidth;
+
+    const bucket = data.find(
+      ({ index }) => indexPos >= index && indexPos < index + 1,
+    );
+
+    return bucket;
+  };
+
   renderCursor = (cursorValue, index) => {
     const {
       cursorRadius,
       handleLabelFormat,
+      hasScale,
+      bucketSize,
       scale,
       selectedColor,
+      width,
     } = this.props;
     const formatter = d3Format(handleLabelFormat);
+
+    const bucket = this.findBucket(cursorValue);
+    const calculatedCursorValue = hasScale
+      ? scale(cursorValue)
+      : bucket.index * (width / bucketSize);
 
     return (
       <g
         tabIndex={0}
         onKeyDown={this.keyDown(index)}
-        transform={`translate(${scale(cursorValue)}, 0)`}
+        transform={`translate(${calculatedCursorValue}, 0)`}
         key={`handle-${index}`}
       >
         <circle
@@ -264,27 +333,44 @@ export default class Slider extends Component {
       selectedColor,
       unselectedColor,
       sliderStyle,
+      bucketSize,
       data,
+      hasScale,
       sliderTrackHeight,
     } = this.props;
 
-    const selectionWidth = Math.abs(scale(selection[1]) - scale(selection[0]));
+    /*
+    const selectionWidth = hasScale
+      ? Math.abs(scale(selection[1]) - scale(selection[0]))
+      : width / bucketSize;
+      */
     const selectionSorted = Array.from(selection).sort((a, b) => +a - +b);
 
-    const leftSelection = selection[0];
+    const leftBucket = this.findBucket(selectionSorted[0]);
+    const calculatedX = hasScale
+      ? scale(selectionSorted[0])
+      : leftBucket.index * (width / bucketSize);
+
+    const rightBucket = this.findBucket(selectionSorted[1]);
+
+    const selectionWidth = hasScale
+      ? Math.abs(scale(selection[1]) - scale(selection[0]))
+      : (rightBucket.index - leftBucket.index) * (width / bucketSize);
+
+    /*const leftSelection = selection[0];
     const leftInterval = data.find(
       ({ x, x0 }) => leftSelection >= x0 && leftSelection < x,
     );
 
-    const nbBuckets = Object.keys(data).length;
     const rightSelection = selection[1];
     const rightInterval = data.find(
       ({ x, x0 }, index) =>
-        (rightSelection >= x0 && rightSelection < x) || index === nbBuckets - 1,
-    );
+        (rightSelection >= x0 && rightSelection < x) ||
+        index === bucketSize - 1,
+    );*/
 
-    const leftLabel = leftInterval.label;
-    const rightLabel = rightInterval.label;
+    const leftLabel = leftBucket.label;
+    const rightLabel = rightBucket.label;
 
     return (
       <svg
@@ -306,7 +392,7 @@ export default class Slider extends Component {
         <rect
           height={sliderTrackHeight}
           fill={selectedColor}
-          x={scale(selectionSorted[0])}
+          x={calculatedX}
           y={10}
           width={selectionWidth}
         />

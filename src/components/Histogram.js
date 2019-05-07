@@ -11,6 +11,7 @@ export default class Histogram extends Component {
         y: PropTypes.number,
         label: PropTypes.string,
         id: PropTypes.string,
+        index: PropTypes.number,
       }),
     ).isRequired,
     selection: PropTypes.arrayOf(PropTypes.number).isRequired,
@@ -40,6 +41,7 @@ export default class Histogram extends Component {
       barBorderRadius,
       barPadding,
       barStyle,
+      bucketSize,
       data,
       hasScale,
       height,
@@ -52,10 +54,9 @@ export default class Histogram extends Component {
       width,
     } = this.props;
 
-    const nbBuckets = Object.keys(data).length;
     const calculatedWidth = hasScale
       ? scale(bucket.x) - scale(bucket.x0) - barPadding
-      : width / nbBuckets - barPadding;
+      : width / bucketSize - barPadding;
 
     const calculatedX0 = hasScale ? scale(bucket.x0) : index * calculatedWidth;
 
@@ -140,7 +141,7 @@ export default class Histogram extends Component {
                 overflow: 'hidden',
                 position: showOnDrag && 'absolute',
                 bottom: showOnDrag && `calc(100% - ${padding}px)`,
-                'margin-bottom': '15px',
+                marginBottom: '15px',
               })}
             >
               <svg

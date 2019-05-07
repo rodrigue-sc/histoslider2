@@ -118,6 +118,7 @@ export default class Histoslider extends Component {
       reset: this.reset,
       width: innerWidth,
       dragging: dragging,
+      bucketSize: Object.keys(sortedData).length,
     };
 
     return (
