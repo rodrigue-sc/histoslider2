@@ -17,6 +17,50 @@ import Slider, { sliderPropTypes } from './Slider';
 
 const SLIDER_HEIGHT = 30;
 
+export const findBucket = ({ bucketSize, cursorValue, data }) => {
+  const bucket = data.find(({ x, x0 }) => cursorValue >= x0 && cursorValue < x);
+
+  if (!bucket) {
+    const lastBucket = data[bucketSize - 1];
+    if (cursorValue >= lastBucket.x) {
+      //Fake bucket
+      return {
+        x0: lastBucket.x,
+        x: lastBucket.x + 1,
+        y: 1,
+        label: lastBucket.label,
+        index: bucketSize,
+      };
+    }
+    return lastBucket;
+  }
+
+  return bucket;
+};
+
+export const findBucketFromPosition = ({ bucketSize, data, width, xPos }) => {
+  if (xPos > width) {
+    return data[bucketSize - 1];
+  }
+
+  if (xPos < 0) {
+    return data[0];
+  }
+
+  const intervalWidth = width / bucketSize;
+  const indexPos = xPos / intervalWidth;
+
+  const bucket = data.find(
+    ({ index }) => indexPos >= index && indexPos < index + 1,
+  );
+
+  if (!bucket) {
+    return data[bucketSize - 1];
+  }
+
+  return bucket;
+};
+
 export default class Histoslider extends Component {
   static propTypes = {
     ...sliderPropTypes,
@@ -35,7 +79,8 @@ export default class Histoslider extends Component {
   };
 
   static defaultProps = {
-    selectedColor: '#0074D9',
+    sliderSelectedColor: '#0074D9',
+    histogramSelectedColor: '#0074D9',
     unselectedColor: '#DDDDDD',
     showOnDrag: false,
     width: 400,
@@ -88,6 +133,8 @@ export default class Histoslider extends Component {
       sliderHeight,
       disableHistogram,
       hasScale,
+      sliderSelectedColor,
+      histogramSelectedColor,
     } = this.props;
     const { dragging } = this.state;
 
@@ -108,18 +155,35 @@ export default class Histoslider extends Component {
 
     const selections = selection || extent;
 
+    const bucketSize = Object.keys(sortedData).length;
+
     const overrides = {
       selection: selections,
       data: sortedData,
       scale,
+      hasScale,
       max: maxValue,
       dragChange: this.dragChange,
       onChange: this.onChange,
       reset: this.reset,
       width: innerWidth,
       dragging: dragging,
-      bucketSize: Object.keys(sortedData).length,
+      bucketSize,
     };
+
+    const leftBucket = findBucket({
+      bucketSize,
+      cursorValue: selections[0],
+      data: sortedData,
+    });
+
+    const rightBucket = findBucket({
+      bucketSize,
+      cursorValue: selections[1],
+      data: sortedData,
+    });
+
+    const minMaxColor = '#5C5C5C';
 
     return (
       <div
@@ -132,18 +196,47 @@ export default class Histoslider extends Component {
         })}
         className="Histoslider Histoslider--wrapper"
       >
+        <svg height={30} width={innerWidth}>
+          <text x={0} y={10} fontSize={12} fontWeight="bold" fill={minMaxColor}>
+            {'Min: '}
+          </text>
+          <text x={0} y={25} fontSize={15} fontWeight="bold">
+            {leftBucket.label}
+          </text>
+
+          <text
+            textAnchor="end"
+            x={innerWidth}
+            y={10}
+            fontSize={12}
+            fontWeight="bold"
+            fill={minMaxColor}
+          >
+            {'Max: '}
+          </text>
+          <text
+            textAnchor="end"
+            x={innerWidth}
+            y={25}
+            fontSize={15}
+            fontWeight="bold"
+          >
+            {rightBucket.label}
+          </text>
+        </svg>
+
         {!disableHistogram && (
           <Histogram
             {...Object.assign({}, this.props, overrides, {
               height: histogramHeight,
-              hasScale,
+              selectedColor: histogramSelectedColor,
             })}
           />
         )}
         <Slider
           {...Object.assign({}, this.props, overrides, {
             height: sliderHeight,
-            hasScale,
+            selectedColor: sliderSelectedColor,
           })}
         />
       </div>

@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { bool, number, shape, arrayOf, func, string, object } from 'prop-types';
 import { format as d3Format } from 'd3-format';
+import { findBucket, findBucketFromPosition } from './Histoslider';
 
 const handleStyle = {
   cursor: 'move',
@@ -149,11 +150,25 @@ export default class Slider extends Component {
   };
 
   dragFromSVG = event => {
-    const { dragChange, hasScale, onChange, scale, selection } = this.props;
+    const {
+      bucketSize,
+      data,
+      dragChange,
+      hasScale,
+      onChange,
+      scale,
+      selection,
+      width,
+    } = this.props;
     const { dragging } = this.state;
 
     if (!dragging && event.nativeEvent.offsetX) {
-      const bucket = this.findBucketFromPosition(event.nativeEvent.offsetX);
+      const bucket = findBucketFromPosition({
+        bucketSize,
+        data,
+        width,
+        xPos: event.nativeEvent.offsetX,
+      });
 
       let selected = hasScale
         ? scale.invert(event.nativeEvent.offsetX)
@@ -184,11 +199,24 @@ export default class Slider extends Component {
   };
 
   mouseMove = event => {
-    const { onChange, hasScale, scale, selection } = this.props;
+    const {
+      onChange,
+      hasScale,
+      scale,
+      selection,
+      bucketSize,
+      data,
+      width,
+    } = this.props;
     const { dragging, dragIndex } = this.state;
 
     if (dragging) {
-      const bucket = this.findBucketFromPosition(event.nativeEvent.offsetX);
+      const bucket = findBucketFromPosition({
+        bucketSize,
+        data,
+        width,
+        xPos: event.nativeEvent.offsetX,
+      });
 
       selection[dragIndex] = hasScale
         ? scale.invert(event.nativeEvent.offsetX)
@@ -200,7 +228,15 @@ export default class Slider extends Component {
   };
 
   touchMove = ({ touches }) => {
-    const { onChange, hasScale, scale, selection } = this.props;
+    const {
+      onChange,
+      hasScale,
+      scale,
+      selection,
+      bucketSize,
+      data,
+      width,
+    } = this.props;
     const { dragging, dragIndex } = this.state;
 
     if (dragging) {
@@ -208,7 +244,12 @@ export default class Slider extends Component {
       const offsetX = touches[0].pageX - left;
       const newSelection = selection.slice();
 
-      const bucket = this.findBucketFromPosition(offsetX);
+      const bucket = findBucketFromPosition({
+        bucketSize,
+        data,
+        width,
+        xPos: offsetX,
+      });
 
       newSelection[dragIndex] = hasScale
         ? scale.invert(offsetX)
@@ -230,56 +271,6 @@ export default class Slider extends Component {
     onChange(selections);
   };
 
-  findBucket = cursorValue => {
-    const { bucketSize, data } = this.props;
-
-    const bucket = data.find(
-      ({ x, x0 }) => cursorValue >= x0 && cursorValue < x,
-    );
-
-    if (!bucket) {
-      const lastBucket = data[bucketSize - 1];
-      if (cursorValue >= lastBucket.x) {
-        //Fake bucket
-        return {
-          x0: lastBucket.x,
-          x: lastBucket.x + 1,
-          y: 1,
-          label: lastBucket.label,
-          index: bucketSize,
-        };
-      }
-      return lastBucket;
-    }
-
-    return bucket;
-  };
-
-  findBucketFromPosition = xPos => {
-    const { bucketSize, data, width } = this.props;
-
-    if (xPos > width) {
-      return data[bucketSize - 1];
-    }
-
-    if (xPos < 0) {
-      return data[0];
-    }
-
-    const intervalWidth = width / bucketSize;
-    const indexPos = xPos / intervalWidth;
-
-    const bucket = data.find(
-      ({ index }) => indexPos >= index && indexPos < index + 1,
-    );
-
-    if (!bucket) {
-      return data[bucketSize - 1];
-    }
-
-    return bucket;
-  };
-
   renderCursor = (cursorValue, index) => {
     const {
       cursorRadius,
@@ -289,10 +280,11 @@ export default class Slider extends Component {
       scale,
       selectedColor,
       width,
+      data,
     } = this.props;
     const formatter = d3Format(handleLabelFormat);
 
-    const bucket = this.findBucket(cursorValue);
+    const bucket = findBucket({ bucketSize, cursorValue, data });
     const calculatedCursorValue = hasScale
       ? scale(cursorValue)
       : bucket.index * (width / bucketSize);
@@ -313,20 +305,18 @@ export default class Slider extends Component {
           stroke={selectedColor}
           strokeWidth="1"
         />
-        <image
-          style={handleStyle}
-          x={-3.5}
-          y={7}
-          //style={{ width: 20, height: 25 }}
-          href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAJCAYAAAD+WDajAAABS2lUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxMzggNzkuMTU5ODI0LCAyMDE2LzA5LzE0LTAxOjA5OjAxICAgICAgICAiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIi8+CiA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo8P3hwYWNrZXQgZW5kPSJyIj8+IEmuOgAAACpJREFUGJVjZMg//ZCBgUGeAQJQ2EwMDAxyDAiAwmZiwAMGpeQjJD4KGwB3gActOpAdqgAAAABJRU5ErkJggg=="
-        />
+
+        <rect fill={selectedColor} width={1} height={9} x={-3} y={8} />
+        <rect fill={selectedColor} width={1} height={9} x={0} y={8} />
+        <rect fill={selectedColor} width={1} height={9} x={3} y={8} />
+
         <circle
           style={handleStyle}
           onMouseDown={this.dragStart(index)}
           onTouchMove={this.touchMove}
           onTouchStart={this.dragStart(index)}
           ref={node => (this.cursorRefs[index] = node)}
-          r={cursorRadius + 5}
+          r={cursorRadius + 20}
           cx={0}
           cy={12.5}
           fill="transparent"
@@ -358,12 +348,20 @@ export default class Slider extends Component {
       */
     const selectionSorted = Array.from(selection).sort((a, b) => +a - +b);
 
-    const leftBucket = this.findBucket(selectionSorted[0]);
+    const leftBucket = findBucket({
+      bucketSize,
+      cursorValue: selectionSorted[0],
+      data,
+    });
     const calculatedX = hasScale
       ? scale(selectionSorted[0])
       : leftBucket.index * (width / bucketSize);
 
-    const rightBucket = this.findBucket(selectionSorted[1]);
+    const rightBucket = findBucket({
+      bucketSize,
+      cursorValue: selectionSorted[1],
+      data,
+    });
 
     const selectionWidth = hasScale
       ? Math.abs(scale(selection[1]) - scale(selection[0]))
@@ -380,9 +378,6 @@ export default class Slider extends Component {
         (rightSelection >= x0 && rightSelection < x) ||
         index === bucketSize - 1,
     );*/
-
-    const leftLabel = leftBucket.label;
-    const rightLabel = rightBucket.label;
 
     return (
       <svg
@@ -409,22 +404,6 @@ export default class Slider extends Component {
           width={selectionWidth}
         />
         {selection.map(this.renderCursor)}
-
-        <text textAnchor="middle" x={0} y={60} fontSize={15} fontWeight="bold">
-          {'Min: '}
-          {leftLabel}
-        </text>
-
-        <text
-          textAnchor="middle"
-          x={width}
-          y={60}
-          fontSize={15}
-          fontWeight="bold"
-        >
-          {'Max: '}
-          {rightLabel}
-        </text>
       </svg>
     );
   }
